@@ -111,36 +111,30 @@ app.get('/api/resend-code', async (req, res) => {
 
 
 
-app.get("/api/verify-code", (req, res) => {
+
+const { isCodeValidForEmail, isAdmin } = require('./db');
+
+app.get("/api/verify-code", async (req, res) => {
   const { email, code } = req.query;
 
   console.log("🔍 Incoming /api/verify-code request:", email, code);
 
   if (!email || !code) {
-    console.warn("⚠️ Missing email or code");
     return res.status(400).json({ valid: false, error: "Missing email or code" });
   }
 
-  db.get(
-    `SELECT * FROM donors WHERE email = ? AND code = ?`,
-    [email, code],
-    (err, row) => {
-      if (err) {
-        console.error("❌ DB error in verify-code:", err);
-        return res.status(500).json({ valid: false, error: "Database error" });
-      }
+  try {
+    const valid = await isCodeValidForEmail(email, code);
+    const admin = valid ? await isAdmin(email, code) : false;
 
-      console.log("🔎 DB query result:", row);
+    console.log("🔐 Code valid:", valid, "| isAdmin:", admin);
 
-      if (!row) {
-        return res.json({ valid: false });
-      }
-
-      res.json({ valid: true, isAdmin: !!row.isAdmin });
-    }
-  );
+    res.json({ valid, isAdmin: admin });
+  } catch (err) {
+    console.error("❌ verify-code error:", err);
+    res.status(500).json({ valid: false, error: "Server error" });
+  }
 });
-
 
 
 
