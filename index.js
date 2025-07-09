@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
-const { addDonor, getCodeByEmail, isCodeValid } = require('./db');
+const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail } = require('./db');
 
 const app = express();
 app.use(express.json());
