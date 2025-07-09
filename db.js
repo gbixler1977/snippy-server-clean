@@ -1,23 +1,32 @@
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./donor_data.db');
+const db = new sqlite3.Database('./donors.db');
 
-// 🛠 MIGRATION: Add isAdmin column if it's missing
+// 🧱 Ensure donors table exists
 db.serialize(() => {
-  db.all("PRAGMA table_info(donor_data);", (err, columns) => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS donors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      isAdmin BOOLEAN DEFAULT 0,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // 🛠 Add isAdmin column if missing
+  db.all("PRAGMA table_info(donors);", (err, columns) => {
     if (err) {
-      console.error("Error checking table schema:", err);
+      console.error("Error checking schema:", err);
       return;
     }
 
     const hasIsAdmin = columns.some(col => col.name === 'isAdmin');
     if (!hasIsAdmin) {
-      console.log("🛠 Adding 'isAdmin' column to donor_data table...");
-      db.run("ALTER TABLE donor_data ADD COLUMN isAdmin BOOLEAN DEFAULT 0", (alterErr) => {
-        if (alterErr) {
-          console.error("Failed to add 'isAdmin' column:", alterErr);
-        } else {
-          console.log("✅ 'isAdmin' column added successfully.");
-        }
+      console.log("🛠 Adding 'isAdmin' column...");
+      db.run(`ALTER TABLE donors ADD COLUMN isAdmin BOOLEAN DEFAULT 0`, (err) => {
+        if (err) console.error("❌ Failed to add 'isAdmin':", err);
+        else console.log("✅ 'isAdmin' column added.");
       });
     } else {
       console.log("✅ 'isAdmin' column already exists.");
@@ -25,11 +34,11 @@ db.serialize(() => {
   });
 });
 
-// 🔧 Insert a new donor_data
-function adddonor_data({ name, email, code, isAdmin = false }) {
+// ✅ Add a new donor
+function addDonor({ name, email, code, isAdmin = false }) {
   return new Promise((resolve, reject) => {
     db.run(
-      `INSERT INTO donor_data (name, email, code, isAdmin) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO donors (name, email, code, isAdmin) VALUES (?, ?, ?, ?)`,
       [name, email, code, isAdmin ? 1 : 0],
       function (err) {
         if (err) reject(err);
@@ -39,11 +48,11 @@ function adddonor_data({ name, email, code, isAdmin = false }) {
   });
 }
 
-// 🔎 Get the latest code by email
+// 🔍 Get latest code for an email
 function getCodeByEmail(email) {
   return new Promise((resolve, reject) => {
     db.get(
-      `SELECT code FROM donor_data WHERE email = ? ORDER BY timestamp DESC LIMIT 1`,
+      `SELECT code FROM donors WHERE email = ? ORDER BY timestamp DESC LIMIT 1`,
       [email],
       (err, row) => {
         if (err) reject(err);
@@ -53,11 +62,11 @@ function getCodeByEmail(email) {
   });
 }
 
-// ✅ Check if a code exists at all
+// 🧾 Check if a code exists
 function isCodeValid(code) {
   return new Promise((resolve, reject) => {
     db.get(
-      `SELECT * FROM donor_data WHERE code = ?`,
+      `SELECT * FROM donors WHERE code = ?`,
       [code],
       (err, row) => {
         if (err) reject(err);
@@ -67,11 +76,11 @@ function isCodeValid(code) {
   });
 }
 
-// ✅ Check if code matches a specific email
+// ✅ Check code AND email match
 function isCodeValidForEmail(email, code) {
   return new Promise((resolve, reject) => {
     db.get(
-      `SELECT * FROM donor_data WHERE email = ? AND code = ?`,
+      `SELECT * FROM donors WHERE email = ? AND code = ?`,
       [email, code],
       (err, row) => {
         if (err) reject(err);
@@ -81,9 +90,24 @@ function isCodeValidForEmail(email, code) {
   });
 }
 
+// 🛂 Check if a donor is an admin
+function isAdmin(email, code) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT isAdmin FROM donors WHERE email = ? AND code = ?`,
+      [email, code],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(!!row?.isAdmin);
+      }
+    );
+  });
+}
+
 module.exports = {
-  adddonor_data,
+  addDonor,
   getCodeByEmail,
   isCodeValid,
-  isCodeValidForEmail
+  isCodeValidForEmail,
+  isAdmin,
 };

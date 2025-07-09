@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
-const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail } = require('./db');
+const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail, isAdmin } = require('./db');
 
 const app = express();
 app.use(express.json());
@@ -94,8 +94,11 @@ app.get('/api/verify-code', async (req, res) => {
   }
 
   try {
-    const isValid = await isCodeValidForEmail(email, code);
-    res.json({ valid: isValid });
+   const isValid = await isCodeValidForEmail(email, code);
+const adminFlag = isValid ? await isAdmin(email, code) : false;
+
+res.json({ valid: isValid, isAdmin: adminFlag });
+
   } catch (err) {
     console.error("❌ Error verifying code and email:", err);
     res.status(500).json({ valid: false, error: "Server error while verifying." });
@@ -142,7 +145,7 @@ app.post('/api/manual-add-code', async (req, res) => {
   const finalCode = code || uuidv4();
 
   try {
-    await addDonor({ name, email, code: finalCode });
+    await addDonor({ name, email, code: finalCode, isAdmin: req.body.admin === true });
     res.json({ success: true, code: finalCode });
   } catch (err) {
     console.error('❌ Failed to add donor manually:', err);
