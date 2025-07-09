@@ -6,14 +6,17 @@ const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail, isAdmin } = 
 
 const app = express();
 
-// Allow CORS from Chrome Extensions
+// ✅ Allow requests from Chrome Extensions
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // Only allow Chrome Extension origin
-  if (origin && origin.startsWith("chrome-extension://")) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
+  // TEMPORARY: allow all origins (for debugging)
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  // Optional: tighten up later
+  // if (origin && origin.startsWith("chrome-extension://")) {
+  //   res.setHeader("Access-Control-Allow-Origin", origin);
+  // }
 
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -24,7 +27,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
 
 
 app.use(express.json());
