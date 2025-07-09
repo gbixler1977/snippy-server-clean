@@ -81,6 +81,29 @@ app.get('/api/resend-code', async (req, res) => {
   }
 });
 
+
+// GET: Verify if the provided code matches the email
+app.get('/api/verify-code', async (req, res) => {
+  const { email, code } = req.query;
+
+  if (!email || !code) {
+    return res.status(400).json({
+      valid: false,
+      error: "Missing email or code parameter."
+    });
+  }
+
+  try {
+    const isValid = await isCodeValidForEmail(email, code);
+    res.json({ valid: isValid });
+  } catch (err) {
+    console.error("❌ Error verifying code and email:", err);
+    res.status(500).json({ valid: false, error: "Server error while verifying." });
+  }
+});
+
+
+
 // Start server
 app.listen(process.env.PORT || 3000, () => {
   console.log('✅ Snippy backend running on port 3000');
