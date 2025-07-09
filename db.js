@@ -104,10 +104,21 @@ function isAdmin(email, code) {
   });
 }
 
+// 🧪 Get all donors
+function getAllDonors() {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT * FROM donors ORDER BY timestamp DESC`, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
 module.exports = {
   addDonor,
   getCodeByEmail,
   isCodeValid,
   isCodeValidForEmail,
   isAdmin,
+  getAllDonors,
 };

@@ -153,24 +153,16 @@ app.get("/api/verify-code", (req, res) => {
 
 // DEBUGGING CODE
 
+const { getAllDonors } = require('./db');
+
 // DEV ONLY: Dump all donor rows (for debugging)
 app.get('/api/dev-list-donors', async (req, res) => {
   try {
-    const sqlite3 = require('sqlite3').verbose();
-    const db = new sqlite3.Database('donors.db');
-
-    db.all("SELECT * FROM donors ORDER BY timestamp DESC", (err, rows) => {
-      if (err) {
-        console.error("❌ Error querying donors:", err);
-        res.status(500).json({ error: "Database query failed" });
-      } else {
-        res.json(rows);
-      }
-    });
-
+    const donors = await getAllDonors();
+    res.json(donors);
   } catch (err) {
-    console.error("❌ Error listing donors:", err);
-    res.status(500).json({ error: "Internal error" });
+    console.error("❌ Error querying donors:", err);
+    res.status(500).json({ error: "Database query failed" });
   }
 });
 
