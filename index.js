@@ -107,27 +107,49 @@ app.get('/api/resend-code', async (req, res) => {
 
 
 // GET: Verify if the provided code matches the email
-app.get('/api/verify-code', async (req, res) => {
+
+
+
+
+app.get("/api/verify-code", (req, res) => {
   const { email, code } = req.query;
 
+  console.log("🔍 Incoming /api/verify-code request:", email, code);
+
   if (!email || !code) {
-    return res.status(400).json({
-      valid: false,
-      error: "Missing email or code parameter."
-    });
+    console.warn("⚠️ Missing email or code");
+    return res.status(400).json({ valid: false, error: "Missing email or code" });
   }
 
-  try {
-   const isValid = await isCodeValidForEmail(email, code);
-const adminFlag = isValid ? await isAdmin(email, code) : false;
+  db.get(
+    `SELECT * FROM donors WHERE email = ? AND code = ?`,
+    [email, code],
+    (err, row) => {
+      if (err) {
+        console.error("❌ DB error in verify-code:", err);
+        return res.status(500).json({ valid: false, error: "Database error" });
+      }
 
-res.json({ valid: isValid, isAdmin: adminFlag });
+      console.log("🔎 DB query result:", row);
 
-  } catch (err) {
-    console.error("❌ Error verifying code and email:", err);
-    res.status(500).json({ valid: false, error: "Server error while verifying." });
-  }
+      if (!row) {
+        return res.json({ valid: false });
+      }
+
+      res.json({ valid: true, isAdmin: !!row.isAdmin });
+    }
+  );
 });
+
+
+
+
+
+
+
+
+
+
 
 // DEBUGGING CODE
 
