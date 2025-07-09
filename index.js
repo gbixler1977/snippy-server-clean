@@ -112,7 +112,7 @@ app.get('/api/resend-code', async (req, res) => {
 
 
 
-const { isCodeValidForEmail, isAdmin } = require('./db');
+
 
 app.get("/api/verify-code", async (req, res) => {
   const { email, code } = req.query;
