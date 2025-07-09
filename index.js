@@ -127,6 +127,31 @@ app.get('/api/dev-list-donors', async (req, res) => {
 
 // END DEBUGGING CODE
 
+
+app.post('/api/manual-add-code', async (req, res) => {
+  const { email, name, code, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  if (!email || !name) {
+    return res.status(400).json({ error: 'Missing name or email' });
+  }
+
+  const finalCode = code || uuidv4();
+
+  try {
+    await addDonor({ name, email, code: finalCode });
+    res.json({ success: true, code: finalCode });
+  } catch (err) {
+    console.error('❌ Failed to add donor manually:', err);
+    res.status(500).json({ error: 'Failed to add code' });
+  }
+});
+
+
+
 // Start server
 app.listen(process.env.PORT || 3000, () => {
   console.log('✅ Snippy backend running on port 3000');
