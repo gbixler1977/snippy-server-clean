@@ -1,8 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('/data/donors.db');
 
-// Create table if not exists
+// ------------------ INIT ------------------
 db.serialize(() => {
+  // Donors table
   db.run(`
     CREATE TABLE IF NOT EXISTS donors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -13,26 +14,40 @@ db.serialize(() => {
       timestamp TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Insults table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS insults (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text TEXT NOT NULL,
+      submittedByName TEXT,
+      submittedByEmail TEXT,
+      showName BOOLEAN DEFAULT 1,
+      status TEXT DEFAULT 'pending', -- pending, approved, rejected, Rejected - Duplicate
+      rejectionReason TEXT,
+      approvedByEmail TEXT,
+      clickCount INTEGER DEFAULT 0,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 });
 
+// ------------------ DONOR LOGIC ------------------
 function addDonor({ name, email, code, isAdmin = false }) {
   return new Promise((resolve, reject) => {
     db.get(`SELECT * FROM donors WHERE email = ?`, [email], (err, row) => {
       if (err) return reject(err);
 
       if (row) {
-        // Donor exists
         if (isAdmin && !row.isAdmin) {
           db.run(`UPDATE donors SET isAdmin = 1 WHERE email = ?`, [email], function (err2) {
             if (err2) return reject(err2);
             resolve("updated");
           });
         } else {
-          // No update needed
           resolve("exists");
         }
       } else {
-        // Donor does not exist – insert new
         const timestamp = new Date().toISOString();
         db.run(
           `INSERT INTO donors (name, email, code, isAdmin, timestamp) VALUES (?, ?, ?, ?, ?)`,
@@ -101,6 +116,124 @@ function getAllDonors() {
   });
 }
 
+// ------------------ INSULT LOGIC ------------------
+
+function submitInsult({ text, submittedByName, submittedByEmail, showName }) {
+  return new Promise((resolve, reject) => {
+    db.get(`SELECT * FROM insults WHERE LOWER(TRIM(text)) = LOWER(TRIM(?))`, [text], (err, row) => {
+      if (err) return reject(err);
+
+      const timestamp = new Date().toISOString();
+
+      if (row) {
+        // Exact match already exists → auto reject
+        db.run(`
+          INSERT INTO insults (text, submittedByName, submittedByEmail, showName, status, rejectionReason, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [
+          text,
+          submittedByName,
+          submittedByEmail,
+          showName ? 1 : 0,
+          "Rejected - Duplicate",
+          "This insult was already submitted.",
+          timestamp
+        ], function (err2) {
+          if (err2) return reject(err2);
+          resolve({ status: "duplicate", id: this.lastID });
+        });
+      } else {
+        // Fresh insult
+        db.run(`
+          INSERT INTO insults (text, submittedByName, submittedByEmail, showName, status, timestamp)
+          VALUES (?, ?, ?, ?, 'pending', ?)
+        `, [
+          text,
+          submittedByName,
+          submittedByEmail,
+          showName ? 1 : 0,
+          timestamp
+        ], function (err3) {
+          if (err3) return reject(err3);
+          resolve({ status: "pending", id: this.lastID });
+        });
+      }
+    });
+  });
+}
+
+function getInsultsByEmail(email) {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT * FROM insults WHERE submittedByEmail = ? ORDER BY timestamp DESC`, [email], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
+function getInsultsByStatus(status) {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT * FROM insults WHERE status = ? ORDER BY timestamp DESC`, [status], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
+function approveInsult(id, approverEmail) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      UPDATE insults SET status = 'approved', approvedByEmail = ? WHERE id = ?
+    `, [approverEmail, id], function (err) {
+      if (err) reject(err);
+      else resolve(this.changes > 0);
+    });
+  });
+}
+
+function rejectInsult(id, reason = null) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      UPDATE insults SET status = 'rejected', rejectionReason = ? WHERE id = ?
+    `, [reason, id], function (err) {
+      if (err) reject(err);
+      else resolve(this.changes > 0);
+    });
+  });
+}
+
+function incrementClick(insultId) {
+  return new Promise((resolve, reject) => {
+    db.run(`UPDATE insults SET clickCount = clickCount + 1 WHERE id = ?`, [insultId], function (err) {
+      if (err) reject(err);
+      else resolve(true);
+    });
+  });
+}
+
+function insertApprovedInsult({ text, submittedByName, submittedByEmail, showName, approvedByEmail }) {
+  return new Promise((resolve, reject) => {
+    const timestamp = new Date().toISOString();
+    db.run(`
+      INSERT INTO insults (text, submittedByName, submittedByEmail, showName, status, approvedByEmail, timestamp)
+      VALUES (?, ?, ?, ?, 'approved', ?, ?)
+    `, [
+      text,
+      submittedByName,
+      submittedByEmail,
+      showName ? 1 : 0,
+      approvedByEmail,
+      timestamp
+    ], function (err) {
+      if (err) reject(err);
+      else resolve({ status: "approved", id: this.lastID });
+    });
+  });
+}
+
+
+// ------------------ EXPORTS ------------------
+
 module.exports = {
   addDonor,
   deleteDonorByEmail,
@@ -109,4 +242,10 @@ module.exports = {
   isCodeValidForEmail,
   isAdmin,
   getAllDonors,
+  submitInsult,
+  getInsultsByEmail,
+  getInsultsByStatus,
+  approveInsult,
+  rejectInsult,
+  incrementClick
 };

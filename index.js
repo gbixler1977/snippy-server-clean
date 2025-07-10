@@ -9,7 +9,14 @@ const {
   isCodeValidForEmail,
   isAdmin,
   getAllDonors,
-  deleteDonorByEmail
+  deleteDonorByEmail,
+submitInsult,
+  getInsultsByEmail,
+  getInsultsByStatus,
+  approveInsult,
+  rejectInsult,
+  incrementClick,
+  insertApprovedInsult
 } = require('./db');
 
 const app = express();
@@ -182,6 +189,134 @@ app.post('/api/manual-add-code', async (req, res) => {
     res.status(500).json({ error: 'Failed to add code' });
   }
 });
+
+
+//--------------Insult Routes-------------
+
+
+// POST: Submit insult (donor)
+app.post('/api/submit-insult', async (req, res) => {
+  const { text, submittedByName, submittedByEmail, showName } = req.body;
+
+  if (!text || !submittedByEmail) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  try {
+    const result = await submitInsult({ text, submittedByName, submittedByEmail, showName });
+    res.json(result);
+  } catch (err) {
+    console.error("❌ submit-insult failed:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET: Get all insults submitted by this donor
+app.get('/api/my-insults', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Missing email.' });
+
+  try {
+    const rows = await getInsultsByEmail(email);
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ my-insults error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET: Admin – fetch insults by status
+app.get('/api/admin-insults', async (req, res) => {
+  const { status, auth } = req.query;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!status) {
+    return res.status(400).json({ error: "Missing status filter." });
+  }
+
+  try {
+    const rows = await getInsultsByStatus(status);
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ admin-insults error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST: Admin – approve insult
+app.post('/api/approve-insult', async (req, res) => {
+  const { id, approverEmail, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  try {
+    const success = await approveInsult(id, approverEmail);
+    res.json({ success });
+  } catch (err) {
+    console.error("❌ approve-insult error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST: Admin – reject insult
+app.post('/api/reject-insult', async (req, res) => {
+  const { id, reason, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  try {
+    const success = await rejectInsult(id, reason);
+    res.json({ success });
+  } catch (err) {
+    console.error("❌ reject-insult error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST: Admin – insert instantly approved insult
+app.post('/api/insert-insult', async (req, res) => {
+  const { text, submittedByName, submittedByEmail, showName, approvedByEmail, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!text || !submittedByEmail || !approvedByEmail) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  try {
+    const result = await insertApprovedInsult({ text, submittedByName, submittedByEmail, showName, approvedByEmail });
+    res.json(result);
+  } catch (err) {
+    console.error("❌ insert-insult failed:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST: Log click from "donate from insult"
+app.post('/api/track-insult-click', async (req, res) => {
+  const { id } = req.body;
+
+  if (!id) return res.status(400).json({ error: 'Missing insult ID.' });
+
+  try {
+    await incrementClick(id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ track-insult-click failed:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 // Start server
 app.listen(process.env.PORT || 3000, () => {
