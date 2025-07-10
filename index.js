@@ -165,7 +165,7 @@ app.get('/api/dev-list-donors', async (req, res) => {
 
 
 app.post('/api/manual-add-code', async (req, res) => {
-  const { email, name, code, auth } = req.body;
+  const { email, name, code, auth, isAdmin } = req.body;
 
   if (auth !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'Unauthorized' });
@@ -178,7 +178,7 @@ app.post('/api/manual-add-code', async (req, res) => {
   const finalCode = code || uuidv4();
 
   try {
-    await addDonor({ name, email, code: finalCode, isAdmin: req.body.admin === true });
+    await addDonor({ name, email, code: finalCode, isAdmin: req.body.isAdmin === true });
     res.json({ success: true, code: finalCode });
   } catch (err) {
     console.error('❌ Failed to add donor manually:', err);
