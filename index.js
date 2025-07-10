@@ -2,25 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
-const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail, isAdmin, getAllDonors, deleteDonorByEmail } = require('./db');
+const {
+  addDonor,
+  getCodeByEmail,
+  isCodeValid,
+  isCodeValidForEmail,
+  isAdmin,
+  getAllDonors,
+  deleteDonorByEmail
+} = require('./db');
 
 const app = express();
 
 // ✅ Allow requests from Chrome Extensions
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-
-  // TEMPORARY: allow all origins (for debugging)
   res.setHeader("Access-Control-Allow-Origin", "*");
-
-  // Optional: tighten up later
-  // if (origin && origin.startsWith("chrome-extension://")) {
-  //   res.setHeader("Access-Control-Allow-Origin", origin);
-  // }
-
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS,DELETE");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, auth");
-
 
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
@@ -28,7 +27,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
 
 app.use(express.json());
 
@@ -39,7 +37,7 @@ app.get('/', (req, res) => {
 
 // POST: Webhook from Zapier after BMAC donation
 app.post('/api/bmac-webhook', async (req, res) => {
-  const { email, name, message, amount, referrer } = req.body;
+  const { email, name } = req.body;
 
   if (!email || !name) {
     return res.status(400).json({ error: 'Missing required fields.' });
@@ -106,11 +104,7 @@ app.get('/api/resend-code', async (req, res) => {
   }
 });
 
-
-// DELETE Donor
-
-
-
+// DELETE: Remove a donor by email
 app.delete('/api/delete-donor', async (req, res) => {
   const { email, auth } = req.body;
 
@@ -135,22 +129,9 @@ app.delete('/api/delete-donor', async (req, res) => {
   }
 });
 
-
-
-
-
-
 // GET: Verify if the provided code matches the email
-
-
-
-
-
-
-
 app.get("/api/verify-code", async (req, res) => {
   const { email, code } = req.query;
-
   console.log("🔍 Incoming /api/verify-code request:", email, code);
 
   if (!email || !code) {
@@ -160,28 +141,13 @@ app.get("/api/verify-code", async (req, res) => {
   try {
     const valid = await isCodeValidForEmail(email, code);
     const admin = valid ? await isAdmin(email, code) : false;
-
     console.log("🔐 Code valid:", valid, "| isAdmin:", admin);
-
     res.json({ valid, isAdmin: admin });
   } catch (err) {
     console.error("❌ verify-code error:", err);
     res.status(500).json({ valid: false, error: "Server error" });
   }
 });
-
-
-
-
-
-
-
-
-
-
-// DEBUGGING CODE
-
-const { getAllDonors } = require('./db');
 
 // DEV ONLY: Dump all donor rows (for debugging)
 app.get('/api/dev-list-donors', async (req, res) => {
@@ -194,9 +160,7 @@ app.get('/api/dev-list-donors', async (req, res) => {
   }
 });
 
-// END DEBUGGING CODE
-
-
+// POST: Manually add a donor (admin only)
 app.post('/api/manual-add-code', async (req, res) => {
   const { email, name, code, auth, isAdmin } = req.body;
 
@@ -211,15 +175,13 @@ app.post('/api/manual-add-code', async (req, res) => {
   const finalCode = code || uuidv4();
 
   try {
-    await addDonor({ name, email, code: finalCode, isAdmin: req.body.isAdmin === true });
+    await addDonor({ name, email, code: finalCode, isAdmin: isAdmin === true });
     res.json({ success: true, code: finalCode });
   } catch (err) {
     console.error('❌ Failed to add donor manually:', err);
     res.status(500).json({ error: 'Failed to add code' });
   }
 });
-
-
 
 // Start server
 app.listen(process.env.PORT || 3000, () => {
