@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
-const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail, isAdmin } = require('./db');
+const { addDonor, getCodeByEmail, isCodeValid, isCodeValidForEmail, isAdmin, getAllDonors, deleteDonorByEmail } = require('./db');
 
 const app = express();
 
@@ -105,6 +105,39 @@ app.get('/api/resend-code', async (req, res) => {
     res.status(500).json({ error: 'Failed to resend unlock code.' });
   }
 });
+
+
+// DELETE Donor
+
+
+
+app.delete('/api/delete-donor', async (req, res) => {
+  const { email, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!email) {
+    return res.status(400).json({ error: "Missing email" });
+  }
+
+  try {
+    const deleted = await deleteDonorByEmail(email);
+    if (deleted) {
+      res.json({ success: true, message: `Deleted donor ${email}` });
+    } else {
+      res.status(404).json({ success: false, message: "No matching donor found" });
+    }
+  } catch (err) {
+    console.error("Delete donor failed:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+
 
 
 // GET: Verify if the provided code matches the email

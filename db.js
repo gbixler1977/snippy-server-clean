@@ -1,113 +1,100 @@
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('/data/donors.db');
+const db = new sqlite3.Database('/mnt/data/donors.db');
 
-// 🧱 Ensure donors table exists
+// Create table if not exists
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS donors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      email TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
       code TEXT NOT NULL,
       isAdmin BOOLEAN DEFAULT 0,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
-  // 🛠 Add isAdmin column if missing
-  db.all("PRAGMA table_info(donors);", (err, columns) => {
-    if (err) {
-      console.error("Error checking schema:", err);
-      return;
-    }
-
-    const hasIsAdmin = columns.some(col => col.name === 'isAdmin');
-    if (!hasIsAdmin) {
-      console.log("🛠 Adding 'isAdmin' column...");
-      db.run(`ALTER TABLE donors ADD COLUMN isAdmin BOOLEAN DEFAULT 0`, (err) => {
-        if (err) console.error("❌ Failed to add 'isAdmin':", err);
-        else console.log("✅ 'isAdmin' column added.");
-      });
-    } else {
-      console.log("✅ 'isAdmin' column already exists.");
-    }
-  });
 });
 
-// ✅ Add a new donor
 function addDonor({ name, email, code, isAdmin = false }) {
   return new Promise((resolve, reject) => {
-    db.run(
-      `INSERT INTO donors (name, email, code, isAdmin) VALUES (?, ?, ?, ?)`,
-      [name, email, code, isAdmin ? 1 : 0],
-      function (err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID });
+    db.get(`SELECT * FROM donors WHERE email = ?`, [email], (err, row) => {
+      if (err) return reject(err);
+
+      if (row) {
+        // Donor exists
+        if (isAdmin && !row.isAdmin) {
+          db.run(`UPDATE donors SET isAdmin = 1 WHERE email = ?`, [email], function (err2) {
+            if (err2) return reject(err2);
+            resolve("updated");
+          });
+        } else {
+          // No update needed
+          resolve("exists");
+        }
+      } else {
+        // Donor does not exist – insert new
+        const timestamp = new Date().toISOString();
+        db.run(
+          `INSERT INTO donors (name, email, code, isAdmin, timestamp) VALUES (?, ?, ?, ?, ?)`,
+          [name, email, code, isAdmin ? 1 : 0, timestamp],
+          function (err3) {
+            if (err3) reject(err3);
+            else resolve("inserted");
+          }
+        );
       }
-    );
+    });
   });
 }
 
-// 🔍 Get latest code for an email
+function deleteDonorByEmail(email) {
+  return new Promise((resolve, reject) => {
+    db.run(`DELETE FROM donors WHERE email = ?`, [email], function (err) {
+      if (err) reject(err);
+      else resolve(this.changes > 0);
+    });
+  });
+}
+
 function getCodeByEmail(email) {
   return new Promise((resolve, reject) => {
-    db.get(
-      `SELECT code FROM donors WHERE email = ? ORDER BY timestamp DESC LIMIT 1`,
-      [email],
-      (err, row) => {
-        if (err) reject(err);
-        else resolve(row?.code || null);
-      }
-    );
+    db.get(`SELECT code FROM donors WHERE email = ?`, [email], (err, row) => {
+      if (err) reject(err);
+      else resolve(row?.code || null);
+    });
   });
 }
 
-// 🧾 Check if a code exists
 function isCodeValid(code) {
   return new Promise((resolve, reject) => {
-    db.get(
-      `SELECT * FROM donors WHERE code = ?`,
-      [code],
-      (err, row) => {
-        if (err) reject(err);
-        else resolve(!!row);
-      }
-    );
+    db.get(`SELECT * FROM donors WHERE code = ?`, [code], (err, row) => {
+      if (err) reject(err);
+      else resolve(!!row);
+    });
   });
 }
 
-// ✅ Check code AND email match
 function isCodeValidForEmail(email, code) {
   return new Promise((resolve, reject) => {
-    db.get(
-      `SELECT * FROM donors WHERE email = ? AND code = ?`,
-      [email, code],
-      (err, row) => {
-        if (err) reject(err);
-        else resolve(!!row);
-      }
-    );
+    db.get(`SELECT * FROM donors WHERE email = ? AND code = ?`, [email, code], (err, row) => {
+      if (err) reject(err);
+      else resolve(!!row);
+    });
   });
 }
 
-// 🛂 Check if a donor is an admin
 function isAdmin(email, code) {
   return new Promise((resolve, reject) => {
-    db.get(
-      `SELECT isAdmin FROM donors WHERE email = ? AND code = ?`,
-      [email, code],
-      (err, row) => {
-        if (err) reject(err);
-        else resolve(!!row?.isAdmin);
-      }
-    );
+    db.get(`SELECT isAdmin FROM donors WHERE email = ? AND code = ?`, [email, code], (err, row) => {
+      if (err) reject(err);
+      else resolve(row?.isAdmin === 1);
+    });
   });
 }
 
-// 🧪 Get all donors
 function getAllDonors() {
   return new Promise((resolve, reject) => {
-    db.all(`SELECT * FROM donors ORDER BY timestamp DESC`, (err, rows) => {
+    db.all(`SELECT * FROM donors ORDER BY timestamp DESC`, [], (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
     });
@@ -116,6 +103,7 @@ function getAllDonors() {
 
 module.exports = {
   addDonor,
+  deleteDonorByEmail,
   getCodeByEmail,
   isCodeValid,
   isCodeValidForEmail,
