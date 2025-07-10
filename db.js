@@ -247,5 +247,6 @@ module.exports = {
   getInsultsByStatus,
   approveInsult,
   rejectInsult,
-  incrementClick
+  incrementClick,
+insertApprovedInsult
 };
