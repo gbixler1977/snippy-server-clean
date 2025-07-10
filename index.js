@@ -16,7 +16,9 @@ submitInsult,
   approveInsult,
   rejectInsult,
   incrementClick,
-  insertApprovedInsult
+  insertApprovedInsult,
+getApprovedInsults
+
 } = require('./db');
 
 const app = express();
