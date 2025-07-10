@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('/mnt/data/donors.db');
+const db = new sqlite3.Database('/data/donors.db');
 
 // Create table if not exists
 db.serialize(() => {
