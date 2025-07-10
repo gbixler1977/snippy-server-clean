@@ -231,6 +231,30 @@ function insertApprovedInsult({ text, submittedByName, submittedByEmail, showNam
   });
 }
 
+function getApprovedInsults() {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT 
+         id, 
+         text, 
+         CASE 
+           WHEN showName = 1 THEN submittedByName 
+           ELSE 'Anonymous' 
+         END as submittedByName,
+         clickCount, 
+         timestamp
+       FROM insults
+       WHERE status = 'approved'
+       ORDER BY RANDOM()`,
+      [],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+}
+
 
 // ------------------ EXPORTS ------------------
 
@@ -248,5 +272,6 @@ module.exports = {
   approveInsult,
   rejectInsult,
   incrementClick,
-insertApprovedInsult
+insertApprovedInsult,
+getApprovedInsults
 };

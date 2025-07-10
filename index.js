@@ -301,6 +301,18 @@ app.post('/api/insert-insult', async (req, res) => {
   }
 });
 
+// GET: Public insult pool (approved only)
+app.get('/api/insults', async (req, res) => {
+  try {
+    const insults = await getApprovedInsults();
+    res.json(insults);
+  } catch (err) {
+    console.error("❌ Failed to get insult pool:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 // POST: Log click from "donate from insult"
 app.post('/api/track-insult-click', async (req, res) => {
   const { id } = req.body;
