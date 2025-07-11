@@ -284,18 +284,21 @@ app.post('/api/reject-insult', async (req, res) => {
 
 // POST: Admin – insert instantly approved insult
 app.post('/api/insert-insult', async (req, res) => {
-  const { text, submittedByName, submittedByEmail, showName, approvedByEmail, auth } = req.body;
+  // Only 'text' and 'auth' are needed from the frontend now
+  const { text, auth } = req.body;
 
   if (auth !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  if (!text || !submittedByEmail || !approvedByEmail) {
+  // The check for submittedByEmail and approvedByEmail is removed.
+  if (!text) {
     return res.status(400).json({ error: "Missing required fields." });
   }
 
   try {
-    const result = await insertApprovedInsult({ text, submittedByName, submittedByEmail, showName, approvedByEmail });
+    // The call to the db function now only passes the text.
+    const result = await insertApprovedInsult({ text });
     res.json(result);
   } catch (err) {
     console.error("❌ insert-insult failed:", err);
