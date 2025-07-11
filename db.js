@@ -211,22 +211,38 @@ function incrementClick(insultId) {
   });
 }
 
-function insertApprovedInsult({ text, submittedByName, submittedByEmail, showName, approvedByEmail }) {
+/**
+ * Inserts a new, pre-approved insult into the database.
+ * The author is always hardcoded as "Snippy" and associated with the bot's email.
+ *
+ * @param {object} params - The parameters for the function.
+ * @param {string} params.text - The text of the insult to be added.
+ * @returns {Promise<object>} A promise that resolves with the status and ID of the new insult.
+ */
+function insertApprovedInsult({ text }) {
   return new Promise((resolve, reject) => {
     const timestamp = new Date().toISOString();
+    const submittedByName = "Snippy";
+    const botEmail = "snippybot@snippyforquickbase.com";
+    const showName = 1; // Always show the name "Snippy"
+
     db.run(`
       INSERT INTO insults (text, submittedByName, submittedByEmail, showName, status, approvedByEmail, timestamp)
       VALUES (?, ?, ?, ?, 'approved', ?, ?)
     `, [
       text,
-      submittedByName,
-      submittedByEmail,
-      showName ? 1 : 0,
-      approvedByEmail,
+      submittedByName, // Hardcoded to "Snippy"
+      botEmail,        // Hardcoded to the bot's email
+      showName,        // Hardcoded to 1 (true)
+      botEmail,        // Hardcoded to the bot's email for the approver
       timestamp
     ], function (err) {
-      if (err) reject(err);
-      else resolve({ status: "approved", id: this.lastID });
+      if (err) {
+        console.error("Error inserting approved insult:", err);
+        reject(err);
+      } else {
+        resolve({ status: "approved", id: this.lastID });
+      }
     });
   });
 }
