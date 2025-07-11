@@ -10,15 +10,15 @@ const {
   isAdmin,
   getAllDonors,
   deleteDonorByEmail,
-submitInsult,
+  submitInsult,
   getInsultsByEmail,
   getInsultsByStatus,
   approveInsult,
   rejectInsult,
+  deleteInsultById, // NEW
   incrementClick,
   insertApprovedInsult,
-getApprovedInsults
-
+  getApprovedInsults
 } = require('./db');
 
 const app = express();
@@ -276,7 +276,8 @@ app.post('/api/reject-insult', async (req, res) => {
   try {
     const success = await rejectInsult(id, reason);
     res.json({ success });
-  } catch (err) {
+  } catch (err)
+ {
     console.error("❌ reject-insult error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -284,26 +285,46 @@ app.post('/api/reject-insult', async (req, res) => {
 
 // POST: Admin – insert instantly approved insult
 app.post('/api/insert-insult', async (req, res) => {
-  // Only 'text' and 'auth' are needed from the frontend now
   const { text, auth } = req.body;
 
   if (auth !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  // The check for submittedByEmail and approvedByEmail is removed.
   if (!text) {
     return res.status(400).json({ error: "Missing required fields." });
   }
 
   try {
-    // The call to the db function now only passes the text.
     const result = await insertApprovedInsult({ text });
     res.json(result);
   } catch (err) {
     console.error("❌ insert-insult failed:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+/**
+ * NEW: Admin - delete an insult by its ID.
+ */
+app.post('/api/delete-insult', async (req, res) => {
+    const { id, auth } = req.body;
+
+    if (auth !== process.env.ADMIN_SECRET) {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+
+    if (!id) {
+        return res.status(400).json({ error: "Missing insult ID." });
+    }
+
+    try {
+        const success = await deleteInsultById(id);
+        res.json({ success });
+    } catch (err) {
+        console.error("❌ delete-insult error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 // GET: Public insult pool (approved only)

@@ -1,3 +1,4 @@
+
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('/data/donors.db');
 
@@ -202,6 +203,21 @@ function rejectInsult(id, reason = null) {
   });
 }
 
+/**
+ * NEW: Deletes an insult from the database by its ID.
+ * @param {number} id The ID of the insult to delete.
+ * @returns {Promise<boolean>} A promise that resolves to true if a row was deleted.
+ */
+function deleteInsultById(id) {
+    return new Promise((resolve, reject) => {
+        db.run(`DELETE FROM insults WHERE id = ?`, [id], function (err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+}
+
+
 function incrementClick(insultId) {
   return new Promise((resolve, reject) => {
     db.run(`UPDATE insults SET clickCount = clickCount + 1 WHERE id = ?`, [insultId], function (err) {
@@ -211,14 +227,6 @@ function incrementClick(insultId) {
   });
 }
 
-/**
- * Inserts a new, pre-approved insult into the database.
- * The author is always hardcoded as "Snippy" and associated with the bot's email.
- *
- * @param {object} params - The parameters for the function.
- * @param {string} params.text - The text of the insult to be added.
- * @returns {Promise<object>} A promise that resolves with the status and ID of the new insult.
- */
 function insertApprovedInsult({ text }) {
   return new Promise((resolve, reject) => {
     const timestamp = new Date().toISOString();
@@ -231,10 +239,10 @@ function insertApprovedInsult({ text }) {
       VALUES (?, ?, ?, ?, 'approved', ?, ?)
     `, [
       text,
-      submittedByName, // Hardcoded to "Snippy"
-      botEmail,        // Hardcoded to the bot's email
-      showName,        // Hardcoded to 1 (true)
-      botEmail,        // Hardcoded to the bot's email for the approver
+      submittedByName,
+      botEmail,
+      showName,
+      botEmail,
       timestamp
     ], function (err) {
       if (err) {
@@ -287,7 +295,8 @@ module.exports = {
   getInsultsByStatus,
   approveInsult,
   rejectInsult,
+  deleteInsultById, // NEW
   incrementClick,
-insertApprovedInsult,
-getApprovedInsults
+  insertApprovedInsult,
+  getApprovedInsults
 };
