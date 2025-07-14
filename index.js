@@ -338,6 +338,22 @@ app.get('/api/insults', async (req, res) => {
   }
 });
 
+// GET: Random approved insult
+app.get('/api/random-approved-insult', async (req, res) => {
+  try {
+    const insults = await getApprovedInsults(1);
+    if (!insults || insults.length === 0) {
+      return res.status(404).json({ error: "No approved insults found." });
+    }
+    res.json(insults[0]); // Send just one
+  } catch (err) {
+    console.error("❌ Failed to get random insult:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
 
 // POST: Log click from "donate from insult"
 app.post('/api/track-insult-click', async (req, res) => {

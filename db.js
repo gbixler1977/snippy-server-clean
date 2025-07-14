@@ -267,7 +267,7 @@ const timestamp = new Date().toISOString();
   });
 }
 
-function getApprovedInsults() {
+function getApprovedInsults(limit = 100) {
   return new Promise((resolve, reject) => {
     db.all(
       `SELECT 
@@ -281,8 +281,9 @@ function getApprovedInsults() {
          timestamp
        FROM insults
        WHERE status = 'approved'
-       ORDER BY RANDOM()`,
-      [],
+       ORDER BY RANDOM()
+       LIMIT ?`,
+      [limit],
       (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
