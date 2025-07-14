@@ -119,12 +119,22 @@ function getAllDonors() {
 
 // ------------------ INSULT LOGIC ------------------
 
+function sanitizeRichText(input) {
+  return input
+    .replace(/<\s*\/?(?!b|i|u)[^>]+>/gi, '') // remove all tags except b/i/u
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '') // remove <script> entirely
+    .replace(/on\w+="[^"]*"/gi, ''); // remove inline event handlers like onclick
+}
+
+
 function submitInsult({ text, submittedByName, submittedByEmail, showName }) {
   return new Promise((resolve, reject) => {
     db.get(`SELECT * FROM insults WHERE LOWER(TRIM(text)) = LOWER(TRIM(?))`, [text], (err, row) => {
       if (err) return reject(err);
 
-      const timestamp = new Date().toISOString();
+      const safeHtml = sanitizeRichText(text);
+const timestamp = new Date().toISOString();
+
 
       if (row) {
         // Exact match already exists → auto reject
@@ -132,7 +142,7 @@ function submitInsult({ text, submittedByName, submittedByEmail, showName }) {
           INSERT INTO insults (text, submittedByName, submittedByEmail, showName, status, rejectionReason, timestamp)
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [
-          text,
+          safeHtml,
           submittedByName,
           submittedByEmail,
           showName ? 1 : 0,
@@ -229,7 +239,9 @@ function incrementClick(insultId) {
 
 function insertApprovedInsult({ text }) {
   return new Promise((resolve, reject) => {
-    const timestamp = new Date().toISOString();
+    const safeHtml = sanitizeRichText(text);
+const timestamp = new Date().toISOString();
+
     const submittedByName = "Snippy";
     const botEmail = "snippybot@snippyforquickbase.com";
     const showName = 1; // Always show the name "Snippy"
@@ -238,7 +250,7 @@ function insertApprovedInsult({ text }) {
       INSERT INTO insults (text, submittedByName, submittedByEmail, showName, status, approvedByEmail, timestamp)
       VALUES (?, ?, ?, ?, 'approved', ?, ?)
     `, [
-      text,
+      safeHtml,
       submittedByName,
       botEmail,
       showName,
