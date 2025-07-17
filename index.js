@@ -45,43 +45,63 @@ app.get('/', (req, res) => {
 });
 
 // POST: Webhook from Zapier after BMAC donation
+
 app.post('/api/bmac-webhook', async (req, res) => {
-  const { email, name } = req.body;
+  const { email, name, message, amount, referrer } = req.body;
 
   if (!email || !name) {
     return res.status(400).json({ error: 'Missing required fields.' });
   }
 
-  const code = uuidv4();
-
   try {
-    await addDonor({ name, email, code });
+    let code;
+let isNew = false;
+
+const existingCode = await getCodeByEmail(email);
+
+if (existingCode) {
+  code = existingCode;
+} else {
+  code = uuidv4();
+  await addDonor({ name, email, code });
+  isNew = true;
+}
+
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.zoho.com',
-	port: 465,
-  	secure: true,
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
       }
     });
 
-    const mailOptions = {
+    const subject = isNew
+      ? `🎉 Your Snippy Unlock Code`
+      : `🔁 You're already awesome – here’s your code again`;
+
+    const text = isNew
+      ? `Thanks for donating, ${name}!\n\nHere is your Snippy unlock code:\n\n${code}`
+      : `You donated again! Snippy loves you.\n\nHere's your unlock code again just in case:\n\n${code}`;
+
+    await transporter.sendMail({
       from: `"Snippy Bot" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: `🎉 Your Snippy Unlock Code`,
-      text: `Thanks for donating, ${name}!\n\nHere is your Snippy unlock code:\n\n${code}\n\nPaste this into the Snippy Editor under Settings → Unlock Premium Features.`,
-    };
+      subject,
+      text
+    });
 
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent to ${email}.`);
+    console.log(`✅ Unlock code ${isNew ? 'sent' : 'resent'} to ${email}`);
     res.json({ success: true });
+
   } catch (err) {
     console.error('❌ Error processing webhook:', err);
     res.status(500).json({ error: 'Failed to process donation.' });
   }
 });
+
 
 // GET: Resend unlock code by email
 app.get('/api/resend-code', async (req, res) => {
