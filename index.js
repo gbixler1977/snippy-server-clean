@@ -58,7 +58,9 @@ app.post('/api/bmac-webhook', async (req, res) => {
     await addDonor({ name, email, code });
 
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.zoho.com',
+	port: 465,
+  	secure: true,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
@@ -66,7 +68,7 @@ app.post('/api/bmac-webhook', async (req, res) => {
     });
 
     const mailOptions = {
-      from: `"Snippy the Extension" <${process.env.SMTP_USER}>`,
+      from: `"Snippy Bot" <${process.env.SMTP_USER}>`,
       to: email,
       subject: `🎉 Your Snippy Unlock Code`,
       text: `Thanks for donating, ${name}!\n\nHere is your Snippy unlock code:\n\n${code}\n\nPaste this into the Snippy Editor under Settings → Unlock Premium Features.`,
@@ -91,7 +93,9 @@ app.get('/api/resend-code', async (req, res) => {
     if (!code) return res.status(404).json({ error: 'No unlock code found for this email.' });
 
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.zoho.com',
+		port: 465,
+  secure: true,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
@@ -99,7 +103,7 @@ app.get('/api/resend-code', async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"Snippy the Extension" <${process.env.SMTP_USER}>`,
+      from: `"Snippy Bot" <${process.env.SMTP_USER}>`,
       to: email,
       subject: `🔁 Your Snippy Unlock Code (Resent)`,
       text: `You asked for your unlock code. Here it is:\n\n${code}\n\nPaste this into Snippy's Settings to unlock premium features.`,
