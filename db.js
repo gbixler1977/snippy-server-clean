@@ -272,11 +272,9 @@ function getApprovedInsults(limit = 100) {
     db.all(
       `SELECT 
          id, 
-         text, 
-         CASE 
-           WHEN showName = 1 THEN submittedByName 
-           ELSE 'Anonymous' 
-         END as submittedByName,
+         text,
+		showName,		
+		submittedByName       
          clickCount, 
          timestamp
        FROM insults
