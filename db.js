@@ -274,7 +274,7 @@ function getApprovedInsults(limit = 100) {
          id, 
          text,
 		showName,		
-		submittedByName       
+		submittedByName,       
          clickCount, 
          timestamp
        FROM insults
