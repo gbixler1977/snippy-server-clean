@@ -135,6 +135,17 @@ function getAllDonors() {
 
 // ------------------ INSULT LOGIC ------------------
 
+
+
+
+function sanitizeAnnouncementBody(input) {
+  // Allows b, i, u, ul, and li tags. Strips all others.
+  return input
+    .replace(/<\s*\/?(?!b|i|u|ul|li)[^>]+>/gi, '') 
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '');
+}
+
 function sanitizeRichText(input) {
   return input
     .replace(/<\s*\/?(?!b|i|u)[^>]+>/gi, '') // remove all tags except b/i/u
@@ -308,13 +319,19 @@ function getApprovedInsults(limit = 100) {
 
 // ------------------ ANNOUNCEMENT LOGIC ------------------
 
+// db.js
+
 function createAnnouncement({ title, body, category, start, end, createdByEmail }) {
   return new Promise((resolve, reject) => {
     const timestamp = new Date().toISOString();
+    
+    // Sanitize the body before inserting it
+    const safeBody = sanitizeAnnouncementBody(body);
+
     db.run(`
       INSERT INTO announcements (title, body, category, start, end, createdByEmail, createdAt)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [title, body, category, start, end, createdByEmail, timestamp], function (err) {
+    `, [title, safeBody, category, start, end, createdByEmail, timestamp], function (err) { // <-- Use safeBody here
       if (err) reject(err);
       else resolve({ id: this.lastID });
     });
