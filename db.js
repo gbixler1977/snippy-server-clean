@@ -37,7 +37,7 @@ db.run(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
-    category TEXT DEFAULT 'What's New',
+    category TEXT DEFAULT 'What''s New',
     start TEXT NOT NULL,
     end TEXT NOT NULL,
     createdByEmail TEXT,
