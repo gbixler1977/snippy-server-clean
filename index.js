@@ -409,6 +409,9 @@ const {
 app.get('/api/announcements', async (req, res) => {
   try {
     const list = await getActiveAnnouncements();
+	console.log('--- STEP 2: DATA BEFORE SENDING TO CLIENT ---');
+    console.log(JSON.stringify(list, null, 2));
+    console.log('-------------------------------------------');
     res.json(list);
   } catch (err) {
     console.error("❌ Failed to get announcements:", err);
