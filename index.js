@@ -18,7 +18,8 @@ const {
   deleteInsultById, // NEW
   incrementClick,
   insertApprovedInsult,
-  getApprovedInsults
+  getApprovedInsults,
+  deleteAllAnnouncements
 } = require('./db');
 
 const app = express();
@@ -471,6 +472,28 @@ app.post('/api/admin/delete-announcement', async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+// POST: Admin – delete ALL announcements
+app.post('/api/admin/delete-all-announcements', async (req, res) => {
+  const { auth } = req.body;
+
+  // Re-using your existing security check
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  try {
+    const result = await deleteAllAnnouncements();
+    console.log(`✅ DELETED ${result.deletedCount} announcements.`);
+    res.json({ success: true, message: `Successfully deleted ${result.deletedCount} announcements.` });
+  } catch (err) {
+    console.error("❌ Failed to delete all announcements:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post('/api/submit-feedback', async (req, res) => {
   const { name, email, message, type, token } = req.body;
 

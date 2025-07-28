@@ -370,6 +370,22 @@ function deleteAnnouncement(id) {
 }
 
 
+function deleteAllAnnouncements() {
+  return new Promise((resolve, reject) => {
+    // This command deletes every row from the announcements table
+    db.run(`DELETE FROM announcements`, [], function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        // 'this.changes' gives you the number of rows that were deleted
+        resolve({ deletedCount: this.changes });
+      }
+    });
+  });
+}
+
+
+
 // ------------------ EXPORTS ------------------
 
 module.exports = {
@@ -392,5 +408,6 @@ module.exports = {
   createAnnouncement,
   getActiveAnnouncements,
   getAllAnnouncements,
-  deleteAnnouncement
+  deleteAnnouncement,
+  deleteAllAnnouncements
 };
