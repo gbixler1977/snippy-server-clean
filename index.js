@@ -394,6 +394,7 @@ app.post('/api/track-insult-click', async (req, res) => {
   }
 });
 
+
 // ------------------ ANNOUNCEMENT ROUTES ------------------
 
 const {
@@ -468,6 +469,61 @@ app.post('/api/admin/delete-announcement', async (req, res) => {
   } catch (err) {
     console.error("❌ Failed to delete announcement:", err);
     res.status(500).json({ error: "Internal server error" });
+
+app.post('/api/submit-feedback', async (req, res) => {
+  const { name, email, message, type, token } = req.body;
+
+  if (!name || !email || !message || !token) {
+    return res.status(400).json({ error: 'Missing required fields or CAPTCHA.' });
+  }
+
+  // CAPTCHA check
+  try {
+    const verifyRes = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: process.env.RECAPTCHA_SECRET,
+        response: token
+      })
+    });
+
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) {
+      return res.status(403).json({ error: 'CAPTCHA verification failed.' });
+    }
+  } catch (err) {
+    console.error('Captcha error:', err);
+    return res.status(500).json({ error: 'CAPTCHA verification error.' });
+  }
+
+  const target = type === 'bug' ? 'youbrokeit@snippyforquickbase.com' : 'ideagraveyard@snippyforquickbase.com';
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.zoho.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"Feedback from ${name}" <${process.env.SMTP_USER}>`,
+      to: target,
+      replyTo: email,
+      subject: `Snippy Feedback from ${name}`,
+      text: `Name: ${name}\nEmail: ${email}\nType: ${type}\n\n${message}`
+    });
+
+    console.log(`📨 Feedback from ${name} <${email}> sent to ${target}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Feedback email error:', err);
+    res.status(500).json({ error: 'Failed to send email.' });
+
   }
 });
 
