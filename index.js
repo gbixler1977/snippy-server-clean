@@ -469,7 +469,8 @@ app.post('/api/admin/delete-announcement', async (req, res) => {
   } catch (err) {
     console.error("❌ Failed to delete announcement:", err);
     res.status(500).json({ error: "Internal server error" });
-
+  }
+});
 app.post('/api/submit-feedback', async (req, res) => {
   const { name, email, message, type, token } = req.body;
 
