@@ -394,6 +394,82 @@ app.post('/api/track-insult-click', async (req, res) => {
   }
 });
 
+// ------------------ ANNOUNCEMENT ROUTES ------------------
+
+const {
+  createAnnouncement,
+  getActiveAnnouncements,
+  getAllAnnouncements,
+  deleteAnnouncement
+} = require('./db');
+
+// GET: Public – active announcements only
+app.get('/api/announcements', async (req, res) => {
+  try {
+    const list = await getActiveAnnouncements();
+    res.json(list);
+  } catch (err) {
+    console.error("❌ Failed to get announcements:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET: Admin – all announcements
+app.get('/api/admin/announcements', async (req, res) => {
+  if (req.query.auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  try {
+    const all = await getAllAnnouncements();
+    res.json(all);
+  } catch (err) {
+    console.error("❌ Admin: Failed to list announcements:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST: Admin – create a new announcement
+app.post('/api/admin/announcements', async (req, res) => {
+  const { title, body, category, start, end, createdByEmail, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!title || !body || !start || !end) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const result = await createAnnouncement({ title, body, category, start, end, createdByEmail });
+    res.json({ success: true, id: result.id });
+  } catch (err) {
+    console.error("❌ Failed to create announcement:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST: Admin – delete an announcement
+app.post('/api/admin/delete-announcement', async (req, res) => {
+  const { id, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!id) {
+    return res.status(400).json({ error: "Missing announcement ID" });
+  }
+
+  try {
+    const success = await deleteAnnouncement(id);
+    res.json({ success });
+  } catch (err) {
+    console.error("❌ Failed to delete announcement:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // Start server

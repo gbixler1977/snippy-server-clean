@@ -31,6 +31,22 @@ db.serialize(() => {
       timestamp TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  // Announcements table
+db.run(`
+  CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    category TEXT DEFAULT 'What's New',
+    start TEXT NOT NULL,
+    end TEXT NOT NULL,
+    createdByEmail TEXT,
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+  
+  
 });
 
 // ------------------ DONOR LOGIC ------------------
@@ -290,6 +306,52 @@ function getApprovedInsults(limit = 100) {
   });
 }
 
+// ------------------ ANNOUNCEMENT LOGIC ------------------
+
+function createAnnouncement({ title, body, category, start, end, createdByEmail }) {
+  return new Promise((resolve, reject) => {
+    const timestamp = new Date().toISOString();
+    db.run(`
+      INSERT INTO announcements (title, body, category, start, end, createdByEmail, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [title, body, category, start, end, createdByEmail, timestamp], function (err) {
+      if (err) reject(err);
+      else resolve({ id: this.lastID });
+    });
+  });
+}
+
+function getActiveAnnouncements(currentDate = new Date().toISOString()) {
+  return new Promise((resolve, reject) => {
+    db.all(`
+      SELECT * FROM announcements
+      WHERE start <= ? AND end >= ?
+      ORDER BY start DESC
+    `, [currentDate, currentDate], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
+function getAllAnnouncements() {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT * FROM announcements ORDER BY createdAt DESC`, [], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
+function deleteAnnouncement(id) {
+  return new Promise((resolve, reject) => {
+    db.run(`DELETE FROM announcements WHERE id = ?`, [id], function (err) {
+      if (err) reject(err);
+      else resolve(this.changes > 0);
+    });
+  });
+}
+
 
 // ------------------ EXPORTS ------------------
 
@@ -306,8 +368,12 @@ module.exports = {
   getInsultsByStatus,
   approveInsult,
   rejectInsult,
-  deleteInsultById, // NEW
+  deleteInsultById,
   incrementClick,
   insertApprovedInsult,
-  getApprovedInsults
+  getApprovedInsults,
+  createAnnouncement,
+  getActiveAnnouncements,
+  getAllAnnouncements,
+  deleteAnnouncement
 };
