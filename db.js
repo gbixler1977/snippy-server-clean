@@ -324,12 +324,10 @@ function getApprovedInsults(limit = 100) {
 function createAnnouncement({ title, body, category, start, end, createdByEmail }) {
   return new Promise((resolve, reject) => {
     const timestamp = new Date().toISOString();
-    console.log('--- STEP 1: DATA BEFORE SAVING ---');
-    console.log('Original body received:', body);
+    
     // Sanitize the body before inserting it
     const safeBody = sanitizeAnnouncementBody(body);
-console.log('Sanitized safeBody to be saved:', safeBody);
-    console.log('------------------------------------');
+
     db.run(`
       INSERT INTO announcements (title, body, category, start, end, createdByEmail, createdAt)
       VALUES (?, ?, ?, ?, ?, ?, ?)

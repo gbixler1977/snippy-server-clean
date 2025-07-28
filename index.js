@@ -94,7 +94,7 @@ if (existingCode) {
       text
     });
 
-    console.log(`✅ Unlock code ${isNew ? 'sent' : 'resent'} to ${email}`);
+
     res.json({ success: true });
 
   } catch (err) {
@@ -130,7 +130,7 @@ app.get('/api/resend-code', async (req, res) => {
       text: `You asked for your unlock code. Here it is:\n\n${code}\n\nPaste this into Snippy's Settings to unlock premium features.`,
     });
 
-    console.log(`📬 Resent unlock code to ${email}`);
+    
     res.json({ success: true });
   } catch (err) {
     console.error('❌ Resend email failed:', err);
@@ -166,7 +166,7 @@ app.delete('/api/delete-donor', async (req, res) => {
 // GET: Verify if the provided code matches the email
 app.get("/api/verify-code", async (req, res) => {
   const { email, code } = req.query;
-  console.log("🔍 Incoming /api/verify-code request:", email, code);
+  
 
   if (!email || !code) {
     return res.status(400).json({ valid: false, error: "Missing email or code" });
@@ -175,7 +175,7 @@ app.get("/api/verify-code", async (req, res) => {
   try {
     const valid = await isCodeValidForEmail(email, code);
     const admin = valid ? await isAdmin(email, code) : false;
-    console.log("🔐 Code valid:", valid, "| isAdmin:", admin);
+    
     res.json({ valid, isAdmin: admin });
   } catch (err) {
     console.error("❌ verify-code error:", err);
@@ -409,9 +409,7 @@ const {
 app.get('/api/announcements', async (req, res) => {
   try {
     const list = await getActiveAnnouncements();
-	console.log('--- STEP 2: DATA BEFORE SENDING TO CLIENT ---');
-    console.log(JSON.stringify(list, null, 2));
-    console.log('-------------------------------------------');
+	
     res.json(list);
   } catch (err) {
     console.error("❌ Failed to get announcements:", err);
@@ -489,7 +487,7 @@ app.post('/api/admin/delete-all-announcements', async (req, res) => {
 
   try {
     const result = await deleteAllAnnouncements();
-    console.log(`✅ DELETED ${result.deletedCount} announcements.`);
+   
     res.json({ success: true, message: `Successfully deleted ${result.deletedCount} announcements.` });
   } catch (err) {
     console.error("❌ Failed to delete all announcements:", err);
@@ -545,7 +543,7 @@ app.post('/api/submit-feedback', async (req, res) => {
       text: `Name: ${name}\nEmail: ${email}\nType: ${type}\n\n${message}`
     });
 
-    console.log(`📨 Feedback from ${name} <${email}> sent to ${target}`);
+    
     res.json({ success: true });
   } catch (err) {
     console.error('❌ Feedback email error:', err);
