@@ -19,7 +19,8 @@ const {
   incrementClick,
   insertApprovedInsult,
   getApprovedInsults,
-  deleteAllAnnouncements
+  deleteAllAnnouncements,
+  updateAnnouncement
 } = require('./db');
 
 const app = express();
@@ -474,6 +475,26 @@ app.post('/api/admin/delete-announcement', async (req, res) => {
   }
 });
 
+// POST: Admin – update existing announcement
+app.post('/api/admin/update-announcement', async (req, res) => {
+  const { id, title, body, category, start, end, auth } = req.body;
+
+  if (auth !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (!id || !title || !body || !start || !end) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const updated = await updateAnnouncement({ id, title, body, category, start, end });
+    res.json({ success: updated });
+  } catch (err) {
+    console.error("❌ Failed to update announcement:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // POST: Admin – delete ALL announcements

@@ -384,6 +384,19 @@ function deleteAllAnnouncements() {
   });
 }
 
+function updateAnnouncement({ id, title, body, category, start, end }) {
+  return new Promise((resolve, reject) => {
+    const safeBody = sanitizeAnnouncementBody(body);
+    db.run(`
+      UPDATE announcements
+      SET title = ?, body = ?, category = ?, start = ?, end = ?
+      WHERE id = ?
+    `, [title, safeBody, category, start, end, id], function (err) {
+      if (err) reject(err);
+      else resolve(this.changes > 0);
+    });
+  });
+}
 
 
 // ------------------ EXPORTS ------------------
@@ -409,5 +422,6 @@ module.exports = {
   getActiveAnnouncements,
   getAllAnnouncements,
   deleteAnnouncement,
-  deleteAllAnnouncements
+  deleteAllAnnouncements,
+  updateAnnouncement
 };
