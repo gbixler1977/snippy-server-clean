@@ -633,9 +633,9 @@ app.post('/api/functions/save', async (req, res) => {
   }
 });
 
-// GET: list all saved donor functions
-app.get('/api/functions', async (req, res) => {
-  const { email, code } = req.query;
+// POST: list all saved donor functions
+app.post('/api/functions/list', async (req, res) => {
+  const { email, code } = req.body;
 
   if (!(await requireDonorAuth(email, code))) {
     return res.status(403).json({ error: 'Invalid donor credentials.' });
@@ -650,9 +650,9 @@ app.get('/api/functions', async (req, res) => {
   }
 });
 
-// GET: resolve one function by name (used by extension for paste/expand)
-app.get('/api/functions/resolve', async (req, res) => {
-  const { email, code, functionName } = req.query;
+// POST: resolve one function by name (used by extension for paste/expand)
+app.post('/api/functions/resolve', async (req, res) => {
+  const { email, code, functionName } = req.body;
   const normalizedName = normalizeFunctionName(functionName);
 
   if (!(await requireDonorAuth(email, code))) {
@@ -686,8 +686,8 @@ app.get('/api/functions/resolve', async (req, res) => {
   }
 });
 
-// DELETE: remove a saved donor function
-app.delete('/api/functions', async (req, res) => {
+// POST: remove a saved donor function
+app.post('/api/functions/delete', async (req, res) => {
   const { email, code, functionName } = req.body;
   const normalizedName = normalizeFunctionName(functionName);
 
@@ -710,6 +710,7 @@ app.delete('/api/functions', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete donor function.' });
   }
 });
+
 
 
 // Start server
