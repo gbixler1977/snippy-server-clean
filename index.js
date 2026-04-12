@@ -50,7 +50,7 @@ function normalizeFunctionName(input) {
 }
 
 function isValidSnippyFunctionName(functionName) {
-  return /^Snippy[A-Za-z0-9_]*\(\)$/.test(functionName);
+  return /^Snippy[A-Za-z0-9_]+\(\)$/.test(functionName);
 }
 
 async function requireDonorAuth(email, code) {
