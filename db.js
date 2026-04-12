@@ -32,8 +32,8 @@ db.serialize(() => {
     )
   `);
   // Announcements table
-db.run(`
-  CREATE TABLE IF NOT EXISTS announcements (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS announcements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
@@ -44,6 +44,19 @@ db.run(`
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+  // Donor custom functions/snippets table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS donor_functions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      donorEmail TEXT NOT NULL,
+      functionName TEXT NOT NULL,
+      definitionText TEXT NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(donorEmail, functionName)
+    )
+  `);
 
   
   
@@ -398,6 +411,65 @@ function updateAnnouncement({ id, title, body, category, start, end }) {
   });
 }
 
+// ------------------ DONOR FUNCTION LOGIC ------------------
+
+function upsertDonorFunction({ donorEmail, functionName, definitionText }) {
+  return new Promise((resolve, reject) => {
+    const timestamp = new Date().toISOString();
+
+    db.run(`
+      INSERT INTO donor_functions (donorEmail, functionName, definitionText, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(donorEmail, functionName)
+      DO UPDATE SET
+        definitionText = excluded.definitionText,
+        updatedAt = excluded.updatedAt
+    `, [donorEmail, functionName, definitionText, timestamp, timestamp], function (err) {
+      if (err) reject(err);
+      else resolve({ id: this.lastID || null, updated: this.changes > 0 });
+    });
+  });
+}
+
+function getDonorFunctionsByEmail(donorEmail) {
+  return new Promise((resolve, reject) => {
+    db.all(`
+      SELECT functionName, definitionText, createdAt, updatedAt
+      FROM donor_functions
+      WHERE donorEmail = ?
+      ORDER BY updatedAt DESC
+    `, [donorEmail], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
+function getDonorFunctionByName({ donorEmail, functionName }) {
+  return new Promise((resolve, reject) => {
+    db.get(`
+      SELECT functionName, definitionText, createdAt, updatedAt
+      FROM donor_functions
+      WHERE donorEmail = ? AND functionName = ?
+    `, [donorEmail, functionName], (err, row) => {
+      if (err) reject(err);
+      else resolve(row || null);
+    });
+  });
+}
+
+function deleteDonorFunctionByName({ donorEmail, functionName }) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      DELETE FROM donor_functions
+      WHERE donorEmail = ? AND functionName = ?
+    `, [donorEmail, functionName], function (err) {
+      if (err) reject(err);
+      else resolve(this.changes > 0);
+    });
+  });
+}
+
 
 // ------------------ EXPORTS ------------------
 
@@ -423,5 +495,9 @@ module.exports = {
   getAllAnnouncements,
   deleteAnnouncement,
   deleteAllAnnouncements,
-  updateAnnouncement
+  updateAnnouncement,
+  upsertDonorFunction,
+  getDonorFunctionsByEmail,
+  getDonorFunctionByName,
+  deleteDonorFunctionByName
 };

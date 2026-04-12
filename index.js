@@ -20,7 +20,11 @@ const {
   insertApprovedInsult,
   getApprovedInsults,
   deleteAllAnnouncements,
-  updateAnnouncement
+  updateAnnouncement,
+  upsertDonorFunction,
+  getDonorFunctionsByEmail,
+  getDonorFunctionByName,
+  deleteDonorFunctionByName
 } = require('./db');
 
 const app = express();
@@ -40,6 +44,19 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+function normalizeFunctionName(input) {
+  return typeof input === 'string' ? input.trim() : '';
+}
+
+function isValidSnippyFunctionName(functionName) {
+  return /^Snippy[A-Za-z0-9_]*\(\)$/.test(functionName);
+}
+
+async function requireDonorAuth(email, code) {
+  if (!email || !code) return false;
+  return isCodeValidForEmail(email, code);
+}
 
 // Health check
 app.get('/', (req, res) => {
@@ -570,6 +587,127 @@ app.post('/api/submit-feedback', async (req, res) => {
     console.error('❌ Feedback email error:', err);
     res.status(500).json({ error: 'Failed to send email.' });
 
+  }
+});
+
+// ------------------ DONOR FUNCTION ROUTES ------------------
+
+// POST: Create or update donor function text
+app.post('/api/functions/save', async (req, res) => {
+  const { email, code, functionName, definitionText } = req.body;
+  const normalizedName = normalizeFunctionName(functionName);
+
+  if (!(await requireDonorAuth(email, code))) {
+    return res.status(403).json({ error: 'Invalid donor credentials.' });
+  }
+
+  if (!normalizedName || !definitionText) {
+    return res.status(400).json({ error: 'Missing functionName or definitionText.' });
+  }
+
+  if (!isValidSnippyFunctionName(normalizedName)) {
+    return res.status(400).json({
+      error: 'Invalid functionName. It must start with Snippy and end with ().'
+    });
+  }
+
+  const finalDefinition = String(definitionText).trim();
+  if (!finalDefinition) {
+    return res.status(400).json({ error: 'definitionText cannot be empty.' });
+  }
+
+  if (finalDefinition.length > 10000) {
+    return res.status(400).json({ error: 'definitionText is too long (max 10,000 chars).' });
+  }
+
+  try {
+    await upsertDonorFunction({
+      donorEmail: email,
+      functionName: normalizedName,
+      definitionText: finalDefinition
+    });
+    res.json({ success: true, functionName: normalizedName });
+  } catch (err) {
+    console.error('❌ Failed to save donor function:', err);
+    res.status(500).json({ error: 'Failed to save donor function.' });
+  }
+});
+
+// GET: list all saved donor functions
+app.get('/api/functions', async (req, res) => {
+  const { email, code } = req.query;
+
+  if (!(await requireDonorAuth(email, code))) {
+    return res.status(403).json({ error: 'Invalid donor credentials.' });
+  }
+
+  try {
+    const rows = await getDonorFunctionsByEmail(email);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Failed to list donor functions:', err);
+    res.status(500).json({ error: 'Failed to load donor functions.' });
+  }
+});
+
+// GET: resolve one function by name (used by extension for paste/expand)
+app.get('/api/functions/resolve', async (req, res) => {
+  const { email, code, functionName } = req.query;
+  const normalizedName = normalizeFunctionName(functionName);
+
+  if (!(await requireDonorAuth(email, code))) {
+    return res.status(403).json({ error: 'Invalid donor credentials.' });
+  }
+
+  if (!normalizedName) {
+    return res.status(400).json({ error: 'Missing functionName.' });
+  }
+
+  if (!isValidSnippyFunctionName(normalizedName)) {
+    return res.status(400).json({
+      error: 'Invalid functionName. It must start with Snippy and end with ().'
+    });
+  }
+
+  try {
+    const row = await getDonorFunctionByName({
+      donorEmail: email,
+      functionName: normalizedName
+    });
+
+    if (!row) {
+      return res.status(404).json({ error: 'Function not found.' });
+    }
+
+    res.json(row);
+  } catch (err) {
+    console.error('❌ Failed to resolve donor function:', err);
+    res.status(500).json({ error: 'Failed to resolve donor function.' });
+  }
+});
+
+// DELETE: remove a saved donor function
+app.delete('/api/functions', async (req, res) => {
+  const { email, code, functionName } = req.body;
+  const normalizedName = normalizeFunctionName(functionName);
+
+  if (!(await requireDonorAuth(email, code))) {
+    return res.status(403).json({ error: 'Invalid donor credentials.' });
+  }
+
+  if (!normalizedName) {
+    return res.status(400).json({ error: 'Missing functionName.' });
+  }
+
+  try {
+    const success = await deleteDonorFunctionByName({
+      donorEmail: email,
+      functionName: normalizedName
+    });
+    res.json({ success });
+  } catch (err) {
+    console.error('❌ Failed to delete donor function:', err);
+    res.status(500).json({ error: 'Failed to delete donor function.' });
   }
 });
 
